@@ -1,12 +1,13 @@
 '''
 CC BY: Thiago Pacheco Carneiro 2022
+https://creativecommons.org/licenses/by/4.0/
 '''
 
 import random
 import math
 
 
-def obtem_linha_corte(largura: int = 1024,
+def obtem_linha_secao(largura: int = 1024,
                       altura: int = 1024,
                       largura_corte: int = 512) -> list[tuple[int, int]]:
     x1 = random.randint(0, largura-1)
@@ -55,7 +56,7 @@ def main():
 
     # obtendo os pontos da seção na superfície do cubo
     largura_corte = 768
-    linha_corte = obtem_linha_corte(largura_corte=largura_corte)
+    linha_corte = obtem_linha_secao(largura_corte=largura_corte)
 
     # gerando a seção
     img = np.zeros((largura_corte, 1024))
