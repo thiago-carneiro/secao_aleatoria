@@ -1,3 +1,7 @@
+'''
+CC BY: Thiago Pacheco Carneiro 2022
+'''
+
 import random
 import math
 
