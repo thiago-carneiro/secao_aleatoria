@@ -7,83 +7,125 @@ import random
 import math
 
 
-def obtem_linha_secao(largura: int = 1024,
-                      altura: int = 1024,
-                      largura_secao: int = 512
-                      ) -> list[tuple[int, int]]:
-    """Função que retorna uma linha na face superior de um paralelepípedo.
-    Esta linha define a aresta superior de uma seção vertical aleatória
-    do interior do paralelepípedo.
+def _bresenham_line(
+    x1: int,
+    y1: int,
+    x2: int,
+    y2: int,
+) -> list[tuple[int, int]]:
+    points: list[tuple[int, int]] = []
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    err = dx - dy
+
+    while True:
+        points.append((x1, y1))
+        if x1 == x2 and y1 == y2:
+            break
+        e2 = err * 2
+        if e2 > -dy:
+            err -= dy
+            x1 += sx
+        if e2 < dx:
+            err += dx
+            y1 += sy
+
+    return points
+
+
+def obtem_linha_secao(
+    largura: int = 1024,
+    altura: int = 1024,
+    largura_secao: int = 512,
+) -> list[tuple[int, int]]:
+    """Retorna uma linha 2D aleatória dentro de um retângulo.
+
+    A linha começa em um ponto aleatório na face superior e termina
+    em outro ponto que também está dentro do retângulo.
 
     Args:
-        largura (int, optional): largura da face do paralelepípedo.
-                                 Defaults to 1024.
-        altura (int, optional): altura da face do paralelepípedo.
-                                Defaults to 1024.
-        largura_secao (int, optional): largura da seção.
-                                       Defaults to 512.
+        largura (int, optional): largura do retângulo. Defaults to 1024.
+        altura (int, optional): altura do retângulo. Defaults to 1024.
+        largura_secao (int, optional): comprimento da linha.
+            Defaults to 512.
 
     Returns:
-        list[tuple[int, int]]: Lista de todos os pontos da linha.
+        list[tuple[int, int]]: lista de pontos inteiros entre as duas pontas.
     """
+    if largura <= 0 or altura <= 0:
+        raise ValueError("largura e altura devem ser maiores que zero")
+    if largura_secao <= 0:
+        raise ValueError("largura_secao deve ser maior que zero")
 
-    x1 = random.randint(0, largura - 1)
-    y1 = random.randint(0, altura - 1)
+    max_len = math.hypot(largura - 1, altura - 1)
+    if largura_secao > max_len:
+        raise ValueError(
+            "largura_secao não pode ser maior que a diagonal do retângulo"
+        )
+
+    x1 = random.randrange(largura)
+    y1 = random.randrange(altura)
     x2 = -1
     y2 = -1
 
-    # obtendo a segunda ponta da seção, dentro do paralelepípedo
-    while (x2 not in range(largura)) or (y2 not in range(altura)):
-        tetha = random.random() * math.pi * 2
-        x2 = int(x1 + largura_secao * math.cos(tetha))
-        y2 = int(y1 + largura_secao * math.sin(tetha))
+    while (x2 < 0 or x2 >= largura or y2 < 0 or y2 >= altura):
+        theta = random.random() * 2 * math.pi
+        x2 = int(round(x1 + largura_secao * math.cos(theta)))
+        y2 = int(round(y1 + largura_secao * math.sin(theta)))
 
-    # obtendo cada ponto entre as duas pontas da seção
-    pontos = []
-    for i in range(largura_secao):
-        x_ponto = int(x1 + i * math.cos(tetha))
-        y_ponto = int(y1 + i * math.sin(tetha))
-        if (x_ponto in range(largura)) and (y_ponto in range(altura)):
-            pontos.append((x_ponto, y_ponto))
-    return pontos
+    return _bresenham_line(x1, y1, x2, y2)
+
+    raise RuntimeError("Não foi possível encontrar uma linha válida dentro do retângulo")
 
 
 def main():
-    """
-    Exemplo de como usar o obtem_linha_corte.
-    Aqui preenchemos um cubo com um cone e depois
-    obtemos seções verticais aleatórias do cone.
-    """
+    """Exemplo de uso de obtem_linha_secao em um volume menor."""
     import numpy as np
     import matplotlib.pyplot as plt
-    import matplotlib
 
-    matplotlib.use("TkAgg")
+    largura, altura, profundidade = 1024, 1024, 1024
+    cubo = np.zeros((largura, altura, profundidade), dtype=np.uint8)
+    centro = largura // 2
 
-    # gerando o cubo com um cone
-    cubo = np.zeros((1024, 1024, 1024))
-    for i in range(1024):
-        perimetro_int = math.ceil(2 * math.pi * (i + 1))
+    for z in range(profundidade):
+        raio = int((z + 1) * centro / profundidade)
+        if raio < 1:
+            continue
+        perimetro_int = max(8, math.ceil(2 * math.pi * raio))
         for arco in range(perimetro_int):
-            tetha = 2 * math.pi * arco / perimetro_int
-            cubo[
-                512 + int(i * math.cos(tetha) / 2),
-                512 + int(i * math.sin(tetha) / 2),
-                i,
-            ] = 1
+            theta = 2 * math.pi * arco / perimetro_int
+            x = centro + int(raio * math.cos(theta))
+            y = centro + int(raio * math.sin(theta))
+            if 0 <= x < largura and 0 <= y < altura:
+                cubo[x, y, z] = 1
 
-    # obtendo os pontos da seção na superfície do cubo
-    largura_secao = 768
-    linha_secao = obtem_linha_secao(largura_secao=largura_secao)
+    largura_secao = 1024
+    linha_secao = obtem_linha_secao(largura, altura, largura_secao)
 
-    # gerando a seção
-    img = np.zeros((largura_secao, 1024))
-    for i in range(largura_secao):
-        x = linha_secao[i][0]
-        y = linha_secao[i][1]
-        img[i] = cubo[x, y]
+    img = np.stack([cubo[x, y, :] for x, y in linha_secao], axis=0)
 
-    plt.imshow(img.T)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+    # Seção vertical (projeção ao longo da profundidade)
+    ax1.imshow(img.T, aspect="auto", origin="lower", cmap="gray")
+    ax1.set_title("Seção vertical aleatória do volume")
+    ax1.set_xlabel("profundidade")
+    ax1.set_ylabel("posição ao longo da seção")
+
+    # Visão superior (topo) com a linha da seção desenhada sobre o retângulo
+    top = np.zeros((largura, altura), dtype=np.uint8)
+    for x, y in linha_secao:
+        if 0 <= x < largura and 0 <= y < altura:
+            top[x, y] = 1
+
+    ax2.imshow(top.T, origin="lower", cmap="gray")
+    ax2.set_title("Visão superior (topo) com linha de seção")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("y")
+
+    plt.tight_layout()
     plt.show()
 
 
